@@ -1,9 +1,7 @@
 package de.diddiz.LogBlock;
 
 import static de.diddiz.util.BukkitUtils.friendlyWorldname;
-import static de.diddiz.util.Utils.readURL;
 import java.io.File;
-import java.net.URL;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
@@ -115,7 +113,7 @@ class Updater
 
 	String checkVersion() {
 		try {
-			return readURL(new URL("http://diddiz.insane-architects.net/lbuptodate.php?v=" + logblock.getDescription().getVersion()));
+			return logblock.getDescription().getVersion();
 		} catch (final Exception ex) {
 			return "Can't check version";
 		}

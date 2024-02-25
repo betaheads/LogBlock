@@ -48,12 +48,19 @@ public class CommandsHandler implements CommandExecutor
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args) {
+		if (sender instanceof Player) {
+			if (!sender.isOp()) {
+				sender.sendMessage(ChatColor.RED + "You aren't allowed to do this.");
+
+				return false;
+			}
+		}
+
 		if (!cmd.getName().equalsIgnoreCase("lb"))
 			return false;
 		try {
 			if (args.length == 0) {
 				sender.sendMessage(ChatColor.LIGHT_PURPLE + "LogBlock v" + logblock.getDescription().getVersion() + " by DiddiZ");
-				sender.sendMessage(ChatColor.LIGHT_PURPLE + logblock.getUpdater().checkVersion());
 				sender.sendMessage(ChatColor.LIGHT_PURPLE + "Type /lb help for help");
 			} else {
 				final String command = args[0].toLowerCase();
