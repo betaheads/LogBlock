@@ -10,6 +10,8 @@ commands:
     description: 'LogBlock commands.'
     usage: 'Usage: /<command> help'
     aliases: []
+# Who has these permissions is set in config.yml (permissions.groups), see docs/permissions.md.
+# The defaults below only matter with permissions.usePermissionsPlugin: true.
 permissions:
     logblock.*:
         description: Gives access to all LogBlock commands
@@ -23,6 +25,7 @@ permissions:
             logblock.tp: true
             logblock.me: true
             logblock.ignoreRestrictions: true
+            logblock.groups: true
     logblock.tool:
         description: 'Allows using the tool (the woodpickaxe) with default query (toolQuery in config)'
         default: op
@@ -44,12 +47,12 @@ permissions:
     logblock.tp:
         description: 'Allows to use /lb tp'
         default: op
-    logblock.tp:
-        description: 'Allows to use /lb tp'
-        default: op
     logblock.me:
         description: 'Allows to see oneselfs stats with /lb me'
         default: op
     logblock.ignoreRestrictions:
         description: 'Allows to ignore the rollback restrictions rollback.maxTime and rollback.maxArea'
+        default: op
+    logblock.groups:
+        description: 'Allows /lb group: list the permission groups, add and remove players, reload them from config.yml'
         default: op

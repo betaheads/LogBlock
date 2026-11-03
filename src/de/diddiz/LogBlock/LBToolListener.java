@@ -41,6 +41,11 @@ class LBToolListener extends PlayerListener
 							event.setCancelled(true);
 						final QueryParams params = type == toolID ? session.toolQuery : session.toolBlockQuery;
 						final ToolMode mode = type == toolID ? session.toolMode : session.toolBlockMode;
+						// Checked again here: the permission may be gone since /lb tool mode (/lb group remove, reload)
+						if (mode != null && mode != ToolMode.LOOKUP && !logblock.hasPermission(player, mode.getPermission())) {
+							player.sendMessage(ChatColor.RED + "You aren't allowed to use mode " + mode.name().toLowerCase());
+							return;
+						}
 						params.loc = null;
 						params.sel = null;
 						if (type == toolblockID && action == Action.RIGHT_CLICK_BLOCK)

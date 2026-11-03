@@ -5,10 +5,11 @@ tested on Poseidon 1.1.8
 
 Build (JDK 8 + Maven):
 1. Put Poseidon server.jar into testsrv/ (testsrv/server.jar)
-2. mvn package
+2. mvn package (runs the unit tests too)
 The plugin jar is written to testsrv/plugins/LogBlock.jar.
 
 No MySQL connector jar is needed: the driver is bundled in Poseidon's server.jar.
 Chest access logging (logChestAccess) works without Spout, see docs/chest-access.md.
-End-to-end test of it with bots on a real server: bash tests/chest-access/run.sh, see tests/README.md.
 Rollback, redo and clearlog ask for confirmation with /lb yes, see docs/confirmations.md.
+Permissions are set in config.yml: groups, a default group for every player, players added by nickname (/lb group add), see docs/permissions.md. No permissions plugin needed.
+Tests: unit tests run with mvn package; end-to-end tests with bots on a real server: bash tests/chest-access/run.sh, bash tests/permissions/run.sh, see tests/README.md.

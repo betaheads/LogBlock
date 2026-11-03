@@ -6,3 +6,4 @@
 .vscode
 /testsrv
 /tests/*/work
+/tests/work

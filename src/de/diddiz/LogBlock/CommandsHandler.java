@@ -7,6 +7,7 @@ import static de.diddiz.util.Utils.isInt;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -48,14 +49,6 @@ public class CommandsHandler implements CommandExecutor
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args) {
-		if (sender instanceof Player) {
-			if (!sender.isOp()) {
-				sender.sendMessage(ChatColor.RED + "You aren't allowed to do this.");
-
-				return false;
-			}
-		}
-
 		if (!cmd.getName().equalsIgnoreCase("lb"))
 			return false;
 		try {
@@ -86,6 +79,10 @@ public class CommandsHandler implements CommandExecutor
 					sender.sendMessage(ChatColor.GOLD + "/lb prev|next -- Browse lookup result pages");
 					sender.sendMessage(ChatColor.GOLD + "/lb page -- Shows a specific lookup result page");
 					sender.sendMessage(ChatColor.GOLD + "/lb me -- Displays your stats");
+					sender.sendMessage(ChatColor.GOLD + "/lb permissions -- Shows your permissions and groups");
+					sender.sendMessage(ChatColor.GOLD + "/lb group -- Lists the permission groups");
+					sender.sendMessage(ChatColor.GOLD + "/lb group add|remove [group] [player] -- Changes the players of a group");
+					sender.sendMessage(ChatColor.GOLD + "/lb group reload -- Reloads the groups from config.yml");
 					sender.sendMessage(ChatColor.GOLD + "Look at github.com/DiddiZ/LogBlock/wiki/Commands for the full commands reference");
 				} else if (command.equals("params")) {
 					sender.sendMessage(ChatColor.DARK_AQUA + "LogBlock Query Parameters:");
@@ -106,11 +103,26 @@ public class CommandsHandler implements CommandExecutor
 					sender.sendMessage(ChatColor.GOLD + "coords -- Shows coordinates for each block");
 					sender.sendMessage(ChatColor.GOLD + "silent -- Displays lesser messages");
 				} else if (command.equals("permissions")) {
-					final String[] permissions = {"tool", "toolblock", "me", "lookup", "tp", "rollback", "clearlog", "hide", "ignoreRestrictions"};
 					sender.sendMessage(ChatColor.DARK_AQUA + "You've got the following permissions:");
-					for (final String permission : permissions)
-						if (logblock.hasPermission(sender, "logblock." + permission))
+					boolean any = false;
+					for (final String permission : PermissionGroups.PERMISSIONS)
+						if (logblock.hasPermission(sender, "logblock." + permission)) {
 							sender.sendMessage(ChatColor.GOLD + "logblock." + permission);
+							any = true;
+						}
+					if (!any)
+						sender.sendMessage(ChatColor.GOLD + "none");
+					if (sender instanceof Player) {
+						final List<String> groups = new ArrayList<String>();
+						for (final PermissionGroups.Group group : logblock.getPermissionGroups().groupsOf(sender.getName(), sender.isOp()))
+							groups.add(group.name);
+						sender.sendMessage(ChatColor.DARK_AQUA + (groups.isEmpty() ? "You aren't in any group." : "Your groups: " + PermissionGroups.join(groups)));
+					}
+				} else if (command.equals("group") || command.equals("groups")) {
+					if (logblock.hasPermission(sender, "logblock.groups"))
+						groupCommand(sender, args);
+					else
+						sender.sendMessage(ChatColor.RED + "You aren't allowed to do this.");
 				} else if (command.equals("logging")) {
 					if (sender instanceof Player) {
 						final String world = ((Player)sender).getWorld().getName();
@@ -376,6 +388,40 @@ public class CommandsHandler implements CommandExecutor
 			sender.sendMessage(ChatColor.RED + ex.getMessage());
 		}
 		return true;
+	}
+
+	/** /lb group [list], /lb group reload, /lb group add|remove [group] [player], see docs/permissions.md */
+	private void groupCommand(CommandSender sender, String[] args) throws IOException {
+		final String sub = args.length > 1 ? args[1].toLowerCase() : "list";
+		if (sub.equals("list") && args.length <= 2) {
+			final List<PermissionGroups.Group> groups = logblock.getPermissionGroups().getGroups();
+			sender.sendMessage(ChatColor.DARK_AQUA + "LogBlock groups (permissions.groups in config.yml):");
+			if (groups.isEmpty())
+				sender.sendMessage(ChatColor.GOLD + "none");
+			for (final PermissionGroups.Group group : groups) {
+				final List<String> who = new ArrayList<String>();
+				if (group.everyone)
+					who.add("every player");
+				if (group.ops)
+					who.add("ops");
+				sender.sendMessage(ChatColor.GOLD + group.name + (who.isEmpty() ? "" : " (" + PermissionGroups.join(who) + ")") + ": " + ChatColor.WHITE + (group.permissions.isEmpty() ? "no permissions" : PermissionGroups.join(group.permissions)));
+				if (!group.players.isEmpty())
+					sender.sendMessage(ChatColor.WHITE + "  players: " + PermissionGroups.join(group.players));
+			}
+		} else if (sub.equals("reload") && args.length == 2) {
+			final PermissionGroups groups = logblock.reloadPermissionGroups();
+			sender.sendMessage(ChatColor.GREEN + "Reloaded " + groups.getGroups().size() + " groups from config.yml.");
+			for (final String warning : groups.getWarnings())
+				sender.sendMessage(ChatColor.RED + warning);
+			log.info("[LogBlock] " + senderName(sender) + " reloaded the permission groups");
+		} else if ((sub.equals("add") || sub.equals("remove")) && args.length == 4) {
+			final boolean add = sub.equals("add");
+			final String player = args[3];
+			final String group = logblock.changeGroup(args[2], player, add);
+			sender.sendMessage(ChatColor.GREEN + (add ? "Added " + player + " to" : "Removed " + player + " from") + " group " + group + ".");
+			log.info("[LogBlock] " + senderName(sender) + (add ? " added " + player + " to" : " removed " + player + " from") + " permission group " + group);
+		} else
+			sender.sendMessage(ChatColor.RED + "Usage: /lb group, /lb group reload, /lb group add|remove [group] [player]");
 	}
 
 	private void showPage(CommandSender sender, int page) {

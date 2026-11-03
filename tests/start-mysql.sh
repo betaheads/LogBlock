@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Starts a throwaway MySQL 8.0 server for run.sh: data in tests/chest-access/work/mysql, 127.0.0.1:3317,
+# Starts a throwaway MySQL 8.0 server for the end-to-end tests (tests/*/run.sh): data in tests/work/mysql, 127.0.0.1:3317,
 # user root without password. Runs in the foreground; stop it with Ctrl+C or
 #   mysqladmin --no-defaults -h127.0.0.1 -P3317 -uroot shutdown
 # MYSQLD: path to mysqld, e.g. MYSQLD="/c/Program Files/MySQL/MySQL Server 8.0/bin/mysqld" (default: mysqld from PATH).

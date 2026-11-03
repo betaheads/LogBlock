@@ -36,6 +36,60 @@ public class Config
 	public final int toolID, toolblockID;
 	public final boolean askRollbacks, askRedos, askClearLogs, askClearLogAfterRollback;
 	public final Set<Integer> hiddenPlayers, hiddenBlocks;
+	public final boolean usePermissionsPlugin;
+	/** As loaded at startup; /lb group reload replaces LogBlock's copy, see LogBlock.getPermissionGroups() */
+	public final PermissionGroups permissionGroups;
+
+	/**
+	 * config.yml is rewritten on every start and by /lb group add|remove, which drops comments; this header stays.
+	 * Every line must start with #. Keep the commands in sync with /lb commands and docs/permissions.md.
+	 */
+	static final String[] HEADER = {
+			"# LogBlock config. LogBlock rewrites this file on every start: this comment block stays, other comments are lost.",
+			"#",
+			"# ===== Permissions: permissions.groups =====",
+			"# Who may use which /lb command. A player gets the permissions of all groups they are in:",
+			"#   default: true   every player is in the group",
+			"#   ops: true       every op (ops.txt) is in the group",
+			"#   players: [...]  these players are in the group, by nickname (case doesn't matter)",
+			"# Permissions: " + PermissionGroups.join(PermissionGroups.PERMISSIONS) + ",",
+			"#   '*' (all of them, in quotes) or all. The console has all permissions.",
+			"# After editing this file type /lb group reload, no restart needed.",
+			"# permissions.usePermissionsPlugin: true also asks a permissions plugin (Permissions or Bukkit permissions).",
+			"#",
+			"# ===== Commands =====  [permission needed], the ones without need none",
+			"# /lb help, /lb commands, /lb params         help in game",
+			"# /lb permissions                            your permissions and groups",
+			"# /lb logging                                what is logged in your world",
+			"# /lb lookup <params>                        search the log [lookup], also without lookup: /lb player Steve area 10",
+			"# /lb page <n>, /lb next, /lb prev           pages of the last lookup",
+			"# /lb tp <n>                                 teleport to entry n of the last lookup [tp]",
+			"# /lb tp <params>                            teleport to the first change found [tp]",
+			"# /lb me                                     your own stats [me]",
+			"# /lb tool  (/lb t)                          get the tool (lookup.toolID, wood pickaxe), right click a block [tool]",
+			"# /lb tool on|off                            turn your tool on or off",
+			"# /lb tool <params>                          your own tool query [lookup]",
+			"# /lb tool default                           back to lookup.toolQuery and mode lookup",
+			"# /lb tool mode <mode>                       what the tool does: lookup [lookup],",
+			"#                                            rollback, redo, writelogfile [rollback], clearlog [clearlog]",
+			"# /lb toolblock ...  (/lb tb)                the same for the tool block (lookup.toolblockID, bedrock) [toolblock]",
+			"# /lb rollback <params>  (/lb rb, /lb undo)  undo block changes [rollback],",
+			"#                                            within rollback.maxTime and rollback.maxArea unless [ignoreRestrictions]",
+			"# /lb redo <params>                          redo rolled back changes [rollback]",
+			"# /lb yes, /lb no                            confirm or cancel a rollback, redo or clearlog (questioner.*)",
+			"# /lb writelogfile <params>                  write the log to a file in plugins/LogBlock/log/ [rollback]",
+			"# /lb savequeue                              write the queue to the database now [rollback]",
+			"# /lb clearlog <params>                      delete log entries [clearlog]",
+			"# /lb hide                                   stop logging yourself, type it again to start [hide]",
+			"# /lb group                                  list the groups [groups]",
+			"# /lb group add|remove <group> <player>      change the players of a group, saves this file [groups]",
+			"# /lb group reload                           read the groups from this file again [groups]",
+			"#",
+			"# ===== Params =====  for lookup, tp, rollback, redo, writelogfile, clearlog and tool queries",
+			"# player <name...>, block <type...>, created, destroyed, chestaccess, all, area <radius>, selection (WorldEdit),",
+			"# world <name>, time <n> minutes|hours|days, since|before <dd.MM.yyyy> <HH:mm:ss>, limit <n>,",
+			"# sum none|blocks|players, asc, desc, coords, silent, last (the params of your last command)",
+			"# Example: /lb rollback player Griefer area 20 time 2 hours"};
 
 	public static enum LogKillsLevel {
 		PLAYERS, MONSTERS, ANIMALS
@@ -78,11 +132,15 @@ public class Config
 		def.put("questioner.askRedos", true);
 		def.put("questioner.askClearLogs", true);
 		def.put("questioner.askClearLogAfterRollback", true);
+		// See docs/permissions.md. Added as a whole only if missing, so deleted groups don't come back
+		def.put("permissions.usePermissionsPlugin", false);
+		def.put("permissions.groups", PermissionGroups.defaults());
 		final Configuration config = logblock.getConfiguration();
 		config.load();
 		for (final Entry<String, Object> e : def.entrySet())
 			if (config.getProperty(e.getKey()) == null)
 				config.setProperty(e.getKey(), e.getValue());
+		config.setHeader(HEADER);
 		if (!config.save())
 			throw new IOException("Error while writing to config.yml");
 		url = "jdbc:mysql://" + config.getString("mysql.host") + ":" + config.getString("mysql.port") + "/" + config.getString("mysql.database");
@@ -145,6 +203,8 @@ public class Config
 		askRedos = config.getBoolean("questioner.askRedos", true);
 		askClearLogs = config.getBoolean("questioner.askClearLogs", true);
 		askClearLogAfterRollback = config.getBoolean("questioner.askClearLogAfterRollback", true);
+		usePermissionsPlugin = config.getBoolean("permissions.usePermissionsPlugin", false);
+		permissionGroups = PermissionGroups.parse(config.getProperty("permissions.groups"));
 		final List<String> worldNames = config.getStringList("loggedWorlds", null);
 		worlds = new HashMap<Integer, WorldConfig>();
 		if (worldNames == null || worldNames.size() == 0)

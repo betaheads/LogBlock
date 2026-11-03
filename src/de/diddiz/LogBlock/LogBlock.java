@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -26,6 +27,7 @@ import org.bukkit.event.Event.Priority;
 import org.bukkit.event.Event.Type;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.config.Configuration;
 import com.nijiko.permissions.PermissionHandler;
 import com.nijikokun.bukkit.Permissions.Permissions;
 import de.diddiz.LogBlock.QueryParams.BlockChangeType;
@@ -42,6 +44,8 @@ public class LogBlock extends JavaPlugin
 	private Timer timer = null;
 	private LBChestAccessListener chestAccessListener = null;
 	private PermissionHandler permissions = null;
+	private boolean usePermissionsPlugin = false;
+	private volatile PermissionGroups permissionGroups;
 	private boolean errorAtLoading = false;
 	private final Map<Integer, Session> sessions = new HashMap<Integer, Session>();
 
@@ -140,11 +144,15 @@ public class LogBlock extends JavaPlugin
 			}
 		commandsHandler = new CommandsHandler(this);
 		getCommand("lb").setExecutor(commandsHandler);
-		if (pm.getPlugin("Permissions") != null) {
-			permissions = ((Permissions)pm.getPlugin("Permissions")).getHandler();
-			log.info("[LogBlock] Permissions plugin found.");
-		} else
-			log.info("[LogBlock] Permissions plugin not found. Using Bukkit Permissions.");
+		applyPermissionGroups(config.permissionGroups);
+		log.info("[LogBlock] Permissions: " + permissionGroups.getGroups().size() + " groups in config.yml (permissions.groups).");
+		usePermissionsPlugin = config.usePermissionsPlugin;
+		if (usePermissionsPlugin)
+			if (pm.getPlugin("Permissions") != null) {
+				permissions = ((Permissions)pm.getPlugin("Permissions")).getHandler();
+				log.info("[LogBlock] Also using the Permissions plugin (permissions.usePermissionsPlugin).");
+			} else
+				log.info("[LogBlock] Also using Bukkit permissions (permissions.usePermissionsPlugin).");
 		if (config.keepLogDays >= 0) {
 			final QueryParams params = new QueryParams(this);
 			params.minutes = config.keepLogDays * -1440;
@@ -259,10 +267,70 @@ public class LogBlock extends JavaPlugin
 		log.info("LogBlock disabled.");
 	}
 
+	/**
+	 * The console has all permissions. A player has a permission if one of their groups in config.yml gives it, or, with
+	 * permissions.usePermissionsPlugin, if the Permissions plugin or Bukkit permissions give it. See docs/permissions.md.
+	 * @param permission e.g. "logblock.lookup"
+	 */
 	boolean hasPermission(CommandSender sender, String permission) {
-		if (permissions != null && sender instanceof Player)
-			return permissions.has((Player)sender, permission);
-		return sender.hasPermission(permission);
+		if (!(sender instanceof Player))
+			return true;
+		final Player player = (Player)sender;
+		if (permissionGroups.has(player.getName(), player.isOp(), permission))
+			return true;
+		if (!usePermissionsPlugin)
+			return false;
+		if (permissions != null)
+			return permissions.has(player, permission);
+		return player.hasPermission(permission);
+	}
+
+	public PermissionGroups getPermissionGroups() {
+		return permissionGroups;
+	}
+
+	/** Reads permissions.groups from config.yml again, for /lb group reload. If that fails, the old groups stay. */
+	synchronized PermissionGroups reloadPermissionGroups() throws IOException {
+		return applyPermissionGroups(PermissionGroups.parse(loadPermissionGroupsNode()));
+	}
+
+	/**
+	 * Adds the player to or removes them from the players of a group in config.yml, saves it and reloads the groups,
+	 * for /lb group add|remove.
+	 * @return the group's name as written in config.yml
+	 * @throws IllegalArgumentException no such group, already in it / not in it
+	 */
+	synchronized String changeGroup(String group, String player, boolean add) throws IOException {
+		final Object node = loadPermissionGroupsNode();
+		final String name = add ? PermissionGroups.addPlayer(node, group, player) : PermissionGroups.removePlayer(node, group, player);
+		getConfiguration().setHeader(Config.HEADER);
+		if (!getConfiguration().save())
+			throw new IOException("Error while writing to config.yml");
+		applyPermissionGroups(PermissionGroups.parse(node));
+		return name;
+	}
+
+	/** config.yml is loaded fresh, so changes made in the file meanwhile are kept */
+	private Object loadPermissionGroupsNode() throws IOException {
+		final Configuration config = getConfiguration();
+		try {
+			config.load();
+		} catch (final RuntimeException ex) {
+			// SnakeYAML's message has the line and column, the stack trace says nothing more
+			log.warning("[LogBlock] Can't read config.yml: " + ex.getMessage());
+			throw new IOException("config.yml has a mistake (see server log), nothing changed");
+		}
+		final Object node = config.getProperty("permissions.groups");
+		if (!(node instanceof Map))
+			throw new IOException("config.yml can't be read or has no permissions.groups, nothing changed");
+		return node;
+	}
+
+	private PermissionGroups applyPermissionGroups(PermissionGroups groups) {
+		for (final String warning : groups.getWarnings())
+			log.warning("[LogBlock] config.yml: " + warning);
+		permissionGroups = groups;
+		return groups;
 	}
 
 	public Connection getConnection() {
