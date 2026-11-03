@@ -67,11 +67,8 @@ public class LogBlock extends JavaPlugin
 			updater = new Updater(this);
 			log.info("[LogBlock] Version check: " + updater.checkVersion());
 			config = new Config(this);
-			final File file = new File("lib/mysql-connector-java-bin.jar");
-			if (!file.exists() || file.length() == 0)
-				download(log, new URL("http://diddiz.insane-architects.net/download/mysql-connector-java-bin.jar"), file);
-			if (!file.exists() || file.length() == 0)
-				throw new FileNotFoundException(file.getAbsolutePath() + file.getName());
+			// No lib/mysql-connector-java-bin.jar needed: the MySQL driver (com.mysql.jdbc.Driver,
+			// Connector/J 5.1.14) is bundled in Poseidon's server.jar and visible to all plugins.
 			log.info("[LogBlock] Connecting to " + config.user + "@" + config.url + "...");
 			pool = new MySQLConnectionPool(config.url, config.user, config.password);
 			getConnection().close();
@@ -105,7 +102,7 @@ public class LogBlock extends JavaPlugin
 							log.info("[LogBlock] Successfully imported " + sqlFile.getName() + ".");
 						} catch (final Exception ex) {
 							log.log(Level.WARNING, "[LogBlock] Failed to import " + sqlFile.getName() + ": ", ex);
-							file.renameTo(new File("plugins/LogBlock/import/" + sqlFile.getName() + ".failed"));
+							sqlFile.renameTo(new File("plugins/LogBlock/import/" + sqlFile.getName() + ".failed"));
 						}
 					st.close();
 					log.info("[LogBlock] Successfully imported stored queue.");
@@ -140,14 +137,17 @@ public class LogBlock extends JavaPlugin
 			} catch (final Exception ex) {
 				log.warning("[LogBlock] Failed to download WorldEdit. You may have to download it manually. You don't have to install it, just place the jar in the lib folder.");
 			}
-		if (config.logChestAccess && pm.getPlugin("Spout") == null)
-			try {
-				download(log, new URL("http://ci.getspout.org/job/Spout/Recommended/artifact/target/spout-dev-SNAPSHOT.jar"), new File("plugins/Spout.jar"));
-				pm.loadPlugin(new File("plugins/Spout.jar"));
-				pm.enablePlugin(pm.getPlugin("Spout"));
-			} catch (final Exception ex) {
-				log.warning("[LogBlock] Failed to install Spout, you may have to restart your server or install it manually.");
-			}
+		// SPOUT DISABLED: chest access logging needs Spout's inventory open/close events.
+		// Spout is not in any Maven repo and its download URL is dead, so the build skips it for now.
+		// Original logic (auto-download and enable Spout if chest access logging is on):
+		// if (config.logChestAccess && pm.getPlugin("Spout") == null)
+		// 	try {
+		// 		download(log, new URL("http://ci.getspout.org/job/Spout/Recommended/artifact/target/spout-dev-SNAPSHOT.jar"), new File("plugins/Spout.jar"));
+		// 		pm.loadPlugin(new File("plugins/Spout.jar"));
+		// 		pm.enablePlugin(pm.getPlugin("Spout"));
+		// 	} catch (final Exception ex) {
+		// 		log.warning("[LogBlock] Failed to install Spout, you may have to restart your server or install it manually.");
+		// 	}
 		commandsHandler = new CommandsHandler(this);
 		getCommand("lb").setExecutor(commandsHandler);
 		if (pm.getPlugin("Permissions") != null) {
@@ -194,11 +194,15 @@ public class LogBlock extends JavaPlugin
 			pm.registerEvent(Type.ENTITY_EXPLODE, lbEntityListener, Priority.Monitor, this);
 		if (config.logLeavesDecay)
 			pm.registerEvent(Type.LEAVES_DECAY, lbBlockListener, Priority.Monitor, this);
+		// SPOUT DISABLED: see the comment above and LBChestAccessListener.
+		// Original logic (register the Spout inventory listener):
+		// if (config.logChestAccess)
+		// 	if (pm.getPlugin("Spout") != null)
+		// 		pm.registerEvent(Type.CUSTOM_EVENT, new LBChestAccessListener(this), Priority.Monitor, this);
+		// 	else
+		// 		log.warning("[LogBlock] BukkitContrib not found. Can't log chest accesses.");
 		if (config.logChestAccess)
-			if (pm.getPlugin("Spout") != null)
-				pm.registerEvent(Type.CUSTOM_EVENT, new LBChestAccessListener(this), Priority.Monitor, this);
-			else
-				log.warning("[LogBlock] BukkitContrib not found. Can't log chest accesses.");
+			log.warning("[LogBlock] logChestAccess is enabled, but chest access logging is not available in this build (Spout support is disabled).");
 		if (config.logButtonsAndLevers)
 			pm.registerEvent(Type.PLAYER_INTERACT, lbPlayerListener, Priority.Monitor, this);
 		if (config.logKills)

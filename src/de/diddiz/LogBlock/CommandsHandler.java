@@ -28,7 +28,12 @@ import org.bukkit.scheduler.BukkitScheduler;
 import de.diddiz.LogBlock.QueryParams.BlockChangeType;
 import de.diddiz.LogBlock.QueryParams.Order;
 import de.diddiz.LogBlock.QueryParams.SummarizationMode;
-import de.diddiz.LogBlockQuestioner.LogBlockQuestioner;
+// QUESTIONER DISABLED: LogBlockQuestioner (optional plugin that asks "Are you sure?" in chat before
+// rollback/redo/clearlog) is not available as a build dependency, so all its usages are commented out.
+// Behavior is the same as running without the LogBlockQuestioner plugin installed (questioner == null):
+// no confirmation is asked, the command just runs. Config options askRollbacks, askRedos, askClearLogs
+// and askClearLogAfterRollback have no effect until it is restored.
+// import de.diddiz.LogBlockQuestioner.LogBlockQuestioner;
 
 public class CommandsHandler implements CommandExecutor
 {
@@ -36,14 +41,14 @@ public class CommandsHandler implements CommandExecutor
 	private final LogBlock logblock;
 	private final Config config;
 	private final BukkitScheduler scheduler;
-	private final LogBlockQuestioner questioner;
+	// QUESTIONER DISABLED: private final LogBlockQuestioner questioner;
 
 	CommandsHandler(LogBlock logblock) {
 		this.logblock = logblock;
 		log = logblock.getServer().getLogger();
 		config = logblock.getConfig();
 		scheduler = logblock.getServer().getScheduler();
-		questioner = (LogBlockQuestioner)logblock.getServer().getPluginManager().getPlugin("LogBlockQuestioner");
+		// QUESTIONER DISABLED: questioner = (LogBlockQuestioner)logblock.getServer().getPluginManager().getPlugin("LogBlockQuestioner");
 	}
 
 	@Override
@@ -621,21 +626,23 @@ public class CommandsHandler implements CommandExecutor
 						sender.sendMessage(ChatColor.RED + "Rollback aborted");
 					return;
 				}
-				if (!params.silent && config.askRollbacks && questioner != null && sender instanceof Player && !questioner.ask((Player)sender, "Are you sure you want to continue?", "yes", "no").equals("yes")) {
-					sender.sendMessage(ChatColor.RED + "Rollback aborted");
-					return;
-				}
+				// QUESTIONER DISABLED: confirm rollback
+				// if (!params.silent && config.askRollbacks && questioner != null && sender instanceof Player && !questioner.ask((Player)sender, "Are you sure you want to continue?", "yes", "no").equals("yes")) {
+				// 	sender.sendMessage(ChatColor.RED + "Rollback aborted");
+				// 	return;
+				// }
 				editor.start();
 				logblock.getSession(senderName(sender)).lookupCache = editor.errors;
 				sender.sendMessage(ChatColor.GREEN + "Rollback finished successfully (" + editor.getElapsedTime() + " ms, " + editor.getSuccesses() + "/" + changes + " blocks" + (editor.getErrors() > 0 ? ", " + ChatColor.RED + editor.getErrors() + " errors" + ChatColor.GREEN : "") + (editor.getBlacklistCollisions() > 0 ? ", " + editor.getBlacklistCollisions() + " blacklist collisions" : "") + ")");
-				if (!params.silent && config.askClearLogAfterRollback && logblock.hasPermission(sender, "logblock.clearlog") && questioner != null && sender instanceof Player) {
-					Thread.sleep(1000);
-					if (questioner.ask((Player)sender, "Do you want to delete the rollbacked log?", "yes", "no").equals("yes")) {
-						params.silent = true;
-						new CommandClearLog(sender, params, false);
-					} else
-						sender.sendMessage(ChatColor.LIGHT_PURPLE + "Clearlog cancelled");
-				}
+				// QUESTIONER DISABLED: offer to clear the rollbacked log
+				// if (!params.silent && config.askClearLogAfterRollback && logblock.hasPermission(sender, "logblock.clearlog") && questioner != null && sender instanceof Player) {
+				// 	Thread.sleep(1000);
+				// 	if (questioner.ask((Player)sender, "Do you want to delete the rollbacked log?", "yes", "no").equals("yes")) {
+				// 		params.silent = true;
+				// 		new CommandClearLog(sender, params, false);
+				// 	} else
+				// 		sender.sendMessage(ChatColor.LIGHT_PURPLE + "Clearlog cancelled");
+				// }
 			} catch (final Exception ex) {
 				sender.sendMessage(ChatColor.RED + "Exception, check error log");
 				log.log(Level.SEVERE, "[LogBlock Rollback] " + params.getQuery() + ": ", ex);
@@ -679,10 +686,11 @@ public class CommandsHandler implements CommandExecutor
 						sender.sendMessage(ChatColor.RED + "Redo aborted");
 					return;
 				}
-				if (!params.silent && config.askRedos && questioner != null && sender instanceof Player && !questioner.ask((Player)sender, "Are you sure you want to continue?", "yes", "no").equals("yes")) {
-					sender.sendMessage(ChatColor.RED + "Redo aborted");
-					return;
-				}
+				// QUESTIONER DISABLED: confirm redo
+				// if (!params.silent && config.askRedos && questioner != null && sender instanceof Player && !questioner.ask((Player)sender, "Are you sure you want to continue?", "yes", "no").equals("yes")) {
+				// 	sender.sendMessage(ChatColor.RED + "Redo aborted");
+				// 	return;
+				// }
 				editor.start();
 				sender.sendMessage(ChatColor.GREEN + "Redo finished successfully (" + editor.getElapsedTime() + " ms, " + editor.getSuccesses() + "/" + changes + " blocks" + (editor.getErrors() > 0 ? ", " + ChatColor.RED + editor.getErrors() + " errors" + ChatColor.GREEN : "") + (editor.getBlacklistCollisions() > 0 ? ", " + editor.getBlacklistCollisions() + " blacklist collisions" : "") + ")");
 			} catch (final Exception ex) {
@@ -717,14 +725,15 @@ public class CommandsHandler implements CommandExecutor
 				rs = state.executeQuery("SELECT count(*) FROM `" + table + "` " + join + params.getWhere());
 				rs.next();
 				if ((deleted = rs.getInt(1)) > 0) {
-					if (!params.silent && config.askClearLogs && sender instanceof Player && questioner != null) {
-						sender.sendMessage(ChatColor.DARK_AQUA + "Searching " + params.getTitle() + ":");
-						sender.sendMessage(ChatColor.GREEN.toString() + deleted + " blocks found.");
-						if (!questioner.ask((Player)sender, "Are you sure you want to continue?", "yes", "no").equals("yes")) {
-							sender.sendMessage(ChatColor.RED + "ClearLog aborted");
-							return;
-						}
-					}
+					// QUESTIONER DISABLED: confirm clearlog
+					// if (!params.silent && config.askClearLogs && sender instanceof Player && questioner != null) {
+					// 	sender.sendMessage(ChatColor.DARK_AQUA + "Searching " + params.getTitle() + ":");
+					// 	sender.sendMessage(ChatColor.GREEN.toString() + deleted + " blocks found.");
+					// 	if (!questioner.ask((Player)sender, "Are you sure you want to continue?", "yes", "no").equals("yes")) {
+					// 		sender.sendMessage(ChatColor.RED + "ClearLog aborted");
+					// 		return;
+					// 	}
+					// }
 					if (config.dumpDeletedLog)
 						try {
 							state.execute("SELECT * FROM `" + table + "` " + join + params.getWhere() + "INTO OUTFILE '" + new File(dumpFolder, time + " " + table + " " + params.getTitle().replace(":", ".") + ".csv").getAbsolutePath().replace("\\", "\\\\") + "' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"'  LINES TERMINATED BY '\n'");

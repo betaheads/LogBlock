@@ -21,6 +21,7 @@ import java.util.Enumeration;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
+import java.util.concurrent.Executor;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -365,6 +366,35 @@ public class MySQLConnectionPool implements Closeable
 		@Override
 		public <T> T unwrap(Class<T> iface) throws SQLException {
 			return conn.unwrap(iface);
+		}
+
+		// Methods added to java.sql.Connection in Java 7 (JDBC 4.1), required to compile on JDK 8.
+		// Not delegated: the MySQL driver bundled in Poseidon (Connector/J 5.1.14) is JDBC 4.0 and
+		// doesn't implement them (AbstractMethodError). LogBlock never calls them.
+
+		@Override
+		public void setSchema(String schema) throws SQLException {
+			throw new UnsupportedOperationException("Unimplemented method 'setSchema'");
+		}
+
+		@Override
+		public String getSchema() throws SQLException {
+			throw new UnsupportedOperationException("Unimplemented method 'getSchema'");
+		}
+
+		@Override
+		public void abort(Executor executor) throws SQLException {
+			throw new UnsupportedOperationException("Unimplemented method 'abort'");
+		}
+
+		@Override
+		public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
+			throw new UnsupportedOperationException("Unimplemented method 'setNetworkTimeout'");
+		}
+
+		@Override
+		public int getNetworkTimeout() throws SQLException {
+			throw new UnsupportedOperationException("Unimplemented method 'getNetworkTimeout'");
 		}
 
 		long getLastUse() {
