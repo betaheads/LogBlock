@@ -28,7 +28,7 @@ import org.bukkit.scheduler.BukkitScheduler;
 import de.diddiz.LogBlock.QueryParams.BlockChangeType;
 import de.diddiz.LogBlock.QueryParams.Order;
 import de.diddiz.LogBlock.QueryParams.SummarizationMode;
-// QUESTIONER DISABLED: LogBlockQuestioner (optional plugin that asks "Are you sure?" in chat before
+// QUESTIONER DISABLED (see docs/questioner.md): LogBlockQuestioner (optional plugin that asks "Are you sure?" in chat before
 // rollback/redo/clearlog) is not available as a build dependency, so all its usages are commented out.
 // Behavior is the same as running without the LogBlockQuestioner plugin installed (questioner == null):
 // no confirmation is asked, the command just runs. Config options askRollbacks, askRedos, askClearLogs

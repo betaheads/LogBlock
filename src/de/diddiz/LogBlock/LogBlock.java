@@ -137,8 +137,8 @@ public class LogBlock extends JavaPlugin
 			} catch (final Exception ex) {
 				log.warning("[LogBlock] Failed to download WorldEdit. You may have to download it manually. You don't have to install it, just place the jar in the lib folder.");
 			}
-		// SPOUT DISABLED: chest access logging needs Spout's inventory open/close events.
-		// Spout is not in any Maven repo and its download URL is dead, so the build skips it for now.
+		// SPOUT DISABLED (see docs/spout.md): logging items put into / taken out of containers needs
+		// Spout's inventory open/close events. Spout is not in any Maven repo and its download URL is dead.
 		// Original logic (auto-download and enable Spout if chest access logging is on):
 		// if (config.logChestAccess && pm.getPlugin("Spout") == null)
 		// 	try {
@@ -202,7 +202,7 @@ public class LogBlock extends JavaPlugin
 		// 	else
 		// 		log.warning("[LogBlock] BukkitContrib not found. Can't log chest accesses.");
 		if (config.logChestAccess)
-			log.warning("[LogBlock] logChestAccess is enabled, but chest access logging is not available in this build (Spout support is disabled).");
+			log.warning("[LogBlock] logChestAccess: items put into / taken out of containers are not logged in this build (Spout support is disabled). Contents of broken containers are still logged.");
 		if (config.logButtonsAndLevers)
 			pm.registerEvent(Type.PLAYER_INTERACT, lbPlayerListener, Priority.Monitor, this);
 		if (config.logKills)

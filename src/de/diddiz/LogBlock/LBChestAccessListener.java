@@ -1,4 +1,4 @@
-// SPOUT DISABLED: this whole class is commented out because it is built on Spout's API
+// SPOUT DISABLED (see docs/spout.md): this whole class is commented out because it is built on Spout's API
 // (org.getspout.spoutapi.*), and Spout is not available as a build dependency.
 //
 // How chest access logging works:
