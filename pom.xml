@@ -106,9 +106,6 @@
 
         <!-- SPOUT DISABLED: Spout (chest access logging) is not available in any Maven repo,
              see LBChestAccessListener and the "SPOUT DISABLED" comments in LogBlock.onEnable -->
-
-        <!-- QUESTIONER DISABLED: LogBlockQuestioner (rollback/clearlog confirmations) is not
-             available in any Maven repo, see the "QUESTIONER DISABLED" comments in CommandsHandler -->
     </dependencies>
 
 </project>

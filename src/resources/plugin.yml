@@ -4,7 +4,7 @@ author: DiddiZ
 website: ${project.url}
 main: de.diddiz.LogBlock.LogBlock
 description: Logs blocks.
-softdepend: [BukkitContrib, LogBlockQuestioner, Permissions, WorldEdit]
+softdepend: [BukkitContrib, Permissions, WorldEdit]
 commands:
   lb:
     description: 'LogBlock commands.'

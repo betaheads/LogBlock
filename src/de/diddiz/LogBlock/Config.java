@@ -72,6 +72,8 @@ public class Config
 		def.put("lookup.toolBlockQuery", "area 0 all sum none limit 15 desc silent");
 		def.put("lookup.linesPerPage", 15);
 		def.put("lookup.linesLimit", 1500);
+		// "questioner" is the old name from the LogBlockQuestioner plugin, kept so existing config.yml files still work.
+		// Now these turn the /lb yes confirmations on or off, see docs/confirmations.md
 		def.put("questioner.askRollbacks", true);
 		def.put("questioner.askRedos", true);
 		def.put("questioner.askClearLogs", true);

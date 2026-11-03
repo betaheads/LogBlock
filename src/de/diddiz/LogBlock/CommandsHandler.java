@@ -28,27 +28,22 @@ import org.bukkit.scheduler.BukkitScheduler;
 import de.diddiz.LogBlock.QueryParams.BlockChangeType;
 import de.diddiz.LogBlock.QueryParams.Order;
 import de.diddiz.LogBlock.QueryParams.SummarizationMode;
-// QUESTIONER DISABLED (see docs/questioner.md): LogBlockQuestioner (optional plugin that asks "Are you sure?" in chat before
-// rollback/redo/clearlog) is not available as a build dependency, so all its usages are commented out.
-// Behavior is the same as running without the LogBlockQuestioner plugin installed (questioner == null):
-// no confirmation is asked, the command just runs. Config options askRollbacks, askRedos, askClearLogs
-// and askClearLogAfterRollback have no effect until it is restored.
-// import de.diddiz.LogBlockQuestioner.LogBlockQuestioner;
 
 public class CommandsHandler implements CommandExecutor
 {
+	/** How long a rollback/redo/clearlog waits for /lb yes, see docs/confirmations.md */
+	private static final int CONFIRMATION_SECONDS = 60;
+
 	private final Logger log;
 	private final LogBlock logblock;
 	private final Config config;
 	private final BukkitScheduler scheduler;
-	// QUESTIONER DISABLED: private final LogBlockQuestioner questioner;
 
 	CommandsHandler(LogBlock logblock) {
 		this.logblock = logblock;
 		log = logblock.getServer().getLogger();
 		config = logblock.getConfig();
 		scheduler = logblock.getServer().getScheduler();
-		// QUESTIONER DISABLED: questioner = (LogBlockQuestioner)logblock.getServer().getPluginManager().getPlugin("LogBlockQuestioner");
 	}
 
 	@Override
@@ -84,6 +79,7 @@ public class CommandsHandler implements CommandExecutor
 					sender.sendMessage(ChatColor.GOLD + "/lb hide -- Hides you from log");
 					sender.sendMessage(ChatColor.GOLD + "/lb rollback [params] -- Rollback");
 					sender.sendMessage(ChatColor.GOLD + "/lb redo [params] -- Redo");
+					sender.sendMessage(ChatColor.GOLD + "/lb yes|no -- Confirms or cancels a rollback, redo or clearlog");
 					sender.sendMessage(ChatColor.GOLD + "/lb tp [params] -- Teleports you to the location of griefing");
 					sender.sendMessage(ChatColor.GOLD + "/lb writelogfile [params] -- Writes a log file");
 					sender.sendMessage(ChatColor.GOLD + "/lb lookup [params] -- Lookup");
@@ -322,6 +318,21 @@ public class CommandsHandler implements CommandExecutor
 						new CommandClearLog(sender, params, true);
 					} else
 						sender.sendMessage(ChatColor.RED + "You aren't allowed to do this");
+				} else if (command.equals("yes") || command.equals("no")) {
+					final boolean yes = command.equals("yes");
+					final Session session = logblock.getSession(senderName(sender));
+					final PendingConfirmation pending = session.pendingConfirmation;
+					session.pendingConfirmation = null;
+					if (pending == null)
+						sender.sendMessage(ChatColor.RED + "Nothing to " + (yes ? "confirm" : "cancel") + ".");
+					else if (!yes)
+						sender.sendMessage(ChatColor.RED + pending.name + " aborted");
+					else if (System.currentTimeMillis() > pending.expires)
+						sender.sendMessage(ChatColor.RED + pending.name + " wasn't confirmed within " + CONFIRMATION_SECONDS + " seconds. Run the command again.");
+					else {
+						sender.sendMessage(ChatColor.GREEN + pending.name + " confirmed.");
+						runConfirmed(sender, pending);
+					}
 				} else if (command.equals("tp")) {
 					if (sender instanceof Player) {
 						if (logblock.hasPermission(sender, "logblock.tp"))
@@ -383,6 +394,57 @@ public class CommandsHandler implements CommandExecutor
 				sender.sendMessage(ChatColor.RED + "There isn't a page '" + page + "'");
 		} else
 			sender.sendMessage(ChatColor.RED + "No blocks in lookup cache");
+	}
+
+	/** The rest of a rollback/redo/clearlog, run after the player typed /lb yes */
+	interface ConfirmedAction
+	{
+		void run() throws Exception;
+	}
+
+	/** A rollback/redo/clearlog waiting in the player's Session for /lb yes or /lb no */
+	static class PendingConfirmation
+	{
+		final String name;
+		final ConfirmedAction action;
+		final long expires;
+
+		PendingConfirmation(String name, ConfirmedAction action) {
+			this.name = name;
+			this.action = action;
+			expires = System.currentTimeMillis() + CONFIRMATION_SECONDS * 1000L;
+		}
+	}
+
+	/**
+	 * Only players are asked, and not for silent queries (the tool query is silent by default).
+	 * @param configOption one of the questioner.ask* options
+	 */
+	private static boolean needsConfirmation(CommandSender sender, QueryParams params, boolean configOption) {
+		return configOption && !params.silent && sender instanceof Player;
+	}
+
+	/**
+	 * Stores the action in the sender's session (replacing an older one) and tells the sender to type /lb yes.
+	 * The caller must return right after this: the action runs later, from /lb yes, in a new async task.
+	 */
+	private void askConfirmation(CommandSender sender, String name, String question, ConfirmedAction action) {
+		logblock.getSession(senderName(sender)).pendingConfirmation = new PendingConfirmation(name, action);
+		sender.sendMessage(ChatColor.YELLOW + question);
+		sender.sendMessage(ChatColor.YELLOW + "Type " + ChatColor.GREEN + "/lb yes" + ChatColor.YELLOW + " to confirm or " + ChatColor.RED + "/lb no" + ChatColor.YELLOW + " to cancel (" + CONFIRMATION_SECONDS + " seconds).");
+	}
+
+	private void runConfirmed(final CommandSender sender, final PendingConfirmation pending) throws Exception {
+		final Runnable task = () -> {
+			try {
+				pending.action.run();
+			} catch (final Exception ex) {
+				sender.sendMessage(ChatColor.RED + "Exception, check error log");
+				log.log(Level.SEVERE, "[LogBlock " + pending.name + "] Exception after confirmation: ", ex);
+			}
+		};
+		if (scheduler.scheduleAsyncDelayedTask(logblock, task) == -1)
+			throw new Exception("Failed to schedule the command");
 	}
 
 	private boolean checkRestrictions(CommandSender sender, QueryParams params) {
@@ -626,28 +688,29 @@ public class CommandsHandler implements CommandExecutor
 						sender.sendMessage(ChatColor.RED + "Rollback aborted");
 					return;
 				}
-				// QUESTIONER DISABLED: confirm rollback
-				// if (!params.silent && config.askRollbacks && questioner != null && sender instanceof Player && !questioner.ask((Player)sender, "Are you sure you want to continue?", "yes", "no").equals("yes")) {
-				// 	sender.sendMessage(ChatColor.RED + "Rollback aborted");
-				// 	return;
-				// }
-				editor.start();
-				logblock.getSession(senderName(sender)).lookupCache = editor.errors;
-				sender.sendMessage(ChatColor.GREEN + "Rollback finished successfully (" + editor.getElapsedTime() + " ms, " + editor.getSuccesses() + "/" + changes + " blocks" + (editor.getErrors() > 0 ? ", " + ChatColor.RED + editor.getErrors() + " errors" + ChatColor.GREEN : "") + (editor.getBlacklistCollisions() > 0 ? ", " + editor.getBlacklistCollisions() + " blacklist collisions" : "") + ")");
-				// QUESTIONER DISABLED: offer to clear the rollbacked log
-				// if (!params.silent && config.askClearLogAfterRollback && logblock.hasPermission(sender, "logblock.clearlog") && questioner != null && sender instanceof Player) {
-				// 	Thread.sleep(1000);
-				// 	if (questioner.ask((Player)sender, "Do you want to delete the rollbacked log?", "yes", "no").equals("yes")) {
-				// 		params.silent = true;
-				// 		new CommandClearLog(sender, params, false);
-				// 	} else
-				// 		sender.sendMessage(ChatColor.LIGHT_PURPLE + "Clearlog cancelled");
-				// }
+				if (needsConfirmation(sender, params, config.askRollbacks)) {
+					// the tool reuses its params object for every click, so keep a copy while waiting
+					final QueryParams paramsCopy = params.clone();
+					askConfirmation(sender, "Rollback", "Rollback " + changes + " blocks?", () -> finishRollback(editor, changes, paramsCopy));
+					return;
+				}
+				finishRollback(editor, changes, params);
 			} catch (final Exception ex) {
 				sender.sendMessage(ChatColor.RED + "Exception, check error log");
 				log.log(Level.SEVERE, "[LogBlock Rollback] " + params.getQuery() + ": ", ex);
 			} finally {
 				close();
+			}
+		}
+
+		private void finishRollback(WorldEditor editor, int changes, QueryParams params) throws Exception {
+			editor.start();
+			logblock.getSession(senderName(sender)).lookupCache = editor.errors;
+			sender.sendMessage(ChatColor.GREEN + "Rollback finished successfully (" + editor.getElapsedTime() + " ms, " + editor.getSuccesses() + "/" + changes + " blocks" + (editor.getErrors() > 0 ? ", " + ChatColor.RED + editor.getErrors() + " errors" + ChatColor.GREEN : "") + (editor.getBlacklistCollisions() > 0 ? ", " + editor.getBlacklistCollisions() + " blacklist collisions" : "") + ")");
+			if (needsConfirmation(sender, params, config.askClearLogAfterRollback) && logblock.hasPermission(sender, "logblock.clearlog")) {
+				final QueryParams clearLogParams = params.clone();
+				clearLogParams.silent = true; // already confirmed here, CommandClearLog must not ask again
+				askConfirmation(sender, "ClearLog", "Also delete the log of the rolled back blocks?", () -> new CommandClearLog(sender, clearLogParams, false));
 			}
 		}
 	}
@@ -686,19 +749,22 @@ public class CommandsHandler implements CommandExecutor
 						sender.sendMessage(ChatColor.RED + "Redo aborted");
 					return;
 				}
-				// QUESTIONER DISABLED: confirm redo
-				// if (!params.silent && config.askRedos && questioner != null && sender instanceof Player && !questioner.ask((Player)sender, "Are you sure you want to continue?", "yes", "no").equals("yes")) {
-				// 	sender.sendMessage(ChatColor.RED + "Redo aborted");
-				// 	return;
-				// }
-				editor.start();
-				sender.sendMessage(ChatColor.GREEN + "Redo finished successfully (" + editor.getElapsedTime() + " ms, " + editor.getSuccesses() + "/" + changes + " blocks" + (editor.getErrors() > 0 ? ", " + ChatColor.RED + editor.getErrors() + " errors" + ChatColor.GREEN : "") + (editor.getBlacklistCollisions() > 0 ? ", " + editor.getBlacklistCollisions() + " blacklist collisions" : "") + ")");
+				if (needsConfirmation(sender, params, config.askRedos)) {
+					askConfirmation(sender, "Redo", "Redo " + changes + " blocks?", () -> finishRedo(editor, changes));
+					return;
+				}
+				finishRedo(editor, changes);
 			} catch (final Exception ex) {
 				sender.sendMessage(ChatColor.RED + "Exception, check error log");
 				log.log(Level.SEVERE, "[LogBlock Redo] " + params.getQuery() + ": ", ex);
 			} finally {
 				close();
 			}
+		}
+
+		private void finishRedo(WorldEditor editor, int changes) throws Exception {
+			editor.start();
+			sender.sendMessage(ChatColor.GREEN + "Redo finished successfully (" + editor.getElapsedTime() + " ms, " + editor.getSuccesses() + "/" + changes + " blocks" + (editor.getErrors() > 0 ? ", " + ChatColor.RED + editor.getErrors() + " errors" + ChatColor.GREEN : "") + (editor.getBlacklistCollisions() > 0 ? ", " + editor.getBlacklistCollisions() + " blacklist collisions" : "") + ")");
 		}
 	}
 
@@ -725,15 +791,14 @@ public class CommandsHandler implements CommandExecutor
 				rs = state.executeQuery("SELECT count(*) FROM `" + table + "` " + join + params.getWhere());
 				rs.next();
 				if ((deleted = rs.getInt(1)) > 0) {
-					// QUESTIONER DISABLED: confirm clearlog
-					// if (!params.silent && config.askClearLogs && sender instanceof Player && questioner != null) {
-					// 	sender.sendMessage(ChatColor.DARK_AQUA + "Searching " + params.getTitle() + ":");
-					// 	sender.sendMessage(ChatColor.GREEN.toString() + deleted + " blocks found.");
-					// 	if (!questioner.ask((Player)sender, "Are you sure you want to continue?", "yes", "no").equals("yes")) {
-					// 		sender.sendMessage(ChatColor.RED + "ClearLog aborted");
-					// 		return;
-					// 	}
-					// }
+					if (needsConfirmation(sender, params, config.askClearLogs)) {
+						sender.sendMessage(ChatColor.DARK_AQUA + "Searching " + params.getTitle() + ":");
+						// after /lb yes the whole clearlog runs again (count, dump, delete) with a silent copy of the params
+						final QueryParams confirmedParams = params.clone();
+						confirmedParams.silent = true;
+						askConfirmation(sender, "ClearLog", "Delete " + deleted + " log entries?" + (config.dumpDeletedLog ? "" : " This can't be undone."), () -> new CommandClearLog(sender, confirmedParams, false));
+						return;
+					}
 					if (config.dumpDeletedLog)
 						try {
 							state.execute("SELECT * FROM `" + table + "` " + join + params.getWhere() + "INTO OUTFILE '" + new File(dumpFolder, time + " " + table + " " + params.getTitle().replace(":", ".") + ".csv").getAbsolutePath().replace("\\", "\\\\") + "' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"'  LINES TERMINATED BY '\n'");

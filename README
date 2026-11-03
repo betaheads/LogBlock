@@ -9,4 +9,5 @@ Build (JDK 8 + Maven):
 The plugin jar is written to testsrv/plugins/LogBlock.jar.
 
 No MySQL connector jar is needed: the driver is bundled in Poseidon's server.jar.
-Disabled for now (not available as build dependencies): chest access logging (Spout) and rollback/clearlog confirmations (LogBlockQuestioner).
+Disabled for now (not available as a build dependency): chest access logging (Spout).
+Rollback, redo and clearlog ask for confirmation with /lb yes, see docs/confirmations.md.
