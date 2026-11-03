@@ -66,7 +66,8 @@
     </build>
 
     <dependencies>
-        <!-- Poseidon server.jar: Bukkit API + bundled MySQL driver (com.mysql.jdbc.Driver) -->
+        <!-- Poseidon server.jar: Bukkit API + bundled MySQL driver (com.mysql.jdbc.Driver)
+             + server internals used by chest access logging (see docs/chest-access.md) -->
         <dependency>
             <groupId>Poseidon</groupId>
             <artifactId>poseidon</artifactId>
@@ -103,9 +104,6 @@
                 </exclusion>
             </exclusions>
         </dependency>
-
-        <!-- SPOUT DISABLED: Spout (chest access logging) is not available in any Maven repo,
-             see LBChestAccessListener and the "SPOUT DISABLED" comments in LogBlock.onEnable -->
     </dependencies>
 
 </project>

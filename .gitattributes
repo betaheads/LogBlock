@@ -1,0 +1,2 @@
+# Shell scripts must keep LF, bash fails on CRLF (core.autocrlf=true converts on checkout otherwise)
+*.sh text eol=lf

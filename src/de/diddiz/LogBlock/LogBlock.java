@@ -40,6 +40,7 @@ public class LogBlock extends JavaPlugin
 	private CommandsHandler commandsHandler;
 	private Updater updater = null;
 	private Timer timer = null;
+	private LBChestAccessListener chestAccessListener = null;
 	private PermissionHandler permissions = null;
 	private boolean errorAtLoading = false;
 	private final Map<Integer, Session> sessions = new HashMap<Integer, Session>();
@@ -137,17 +138,6 @@ public class LogBlock extends JavaPlugin
 			} catch (final Exception ex) {
 				log.warning("[LogBlock] Failed to download WorldEdit. You may have to download it manually. You don't have to install it, just place the jar in the lib folder.");
 			}
-		// SPOUT DISABLED (see docs/spout.md): logging items put into / taken out of containers needs
-		// Spout's inventory open/close events. Spout is not in any Maven repo and its download URL is dead.
-		// Original logic (auto-download and enable Spout if chest access logging is on):
-		// if (config.logChestAccess && pm.getPlugin("Spout") == null)
-		// 	try {
-		// 		download(log, new URL("http://ci.getspout.org/job/Spout/Recommended/artifact/target/spout-dev-SNAPSHOT.jar"), new File("plugins/Spout.jar"));
-		// 		pm.loadPlugin(new File("plugins/Spout.jar"));
-		// 		pm.enablePlugin(pm.getPlugin("Spout"));
-		// 	} catch (final Exception ex) {
-		// 		log.warning("[LogBlock] Failed to install Spout, you may have to restart your server or install it manually.");
-		// 	}
 		commandsHandler = new CommandsHandler(this);
 		getCommand("lb").setExecutor(commandsHandler);
 		if (pm.getPlugin("Permissions") != null) {
@@ -194,15 +184,20 @@ public class LogBlock extends JavaPlugin
 			pm.registerEvent(Type.ENTITY_EXPLODE, lbEntityListener, Priority.Monitor, this);
 		if (config.logLeavesDecay)
 			pm.registerEvent(Type.LEAVES_DECAY, lbBlockListener, Priority.Monitor, this);
-		// SPOUT DISABLED: see the comment above and LBChestAccessListener.
-		// Original logic (register the Spout inventory listener):
-		// if (config.logChestAccess)
-		// 	if (pm.getPlugin("Spout") != null)
-		// 		pm.registerEvent(Type.CUSTOM_EVENT, new LBChestAccessListener(this), Priority.Monitor, this);
-		// 	else
-		// 		log.warning("[LogBlock] BukkitContrib not found. Can't log chest accesses.");
 		if (config.logChestAccess)
-			log.warning("[LogBlock] logChestAccess: items put into / taken out of containers are not logged in this build (Spout support is disabled). Contents of broken containers are still logged.");
+			// Built on Poseidon's server internals (net.minecraft.server / org.bukkit.craftbukkit), see LBChestAccessListener
+			try {
+				final LBChestAccessListener listener = new LBChestAccessListener(this);
+				if (getServer().getScheduler().scheduleSyncRepeatingTask(this, listener, 1, 1) < 0)
+					log.warning("[LogBlock] Failed to schedule chest access logging. Items put into / taken out of containers are not logged.");
+				else {
+					pm.registerEvent(Type.PLAYER_INTERACT, listener, Priority.Monitor, this);
+					pm.registerEvent(Type.PLAYER_QUIT, listener, Priority.Monitor, this);
+					chestAccessListener = listener;
+				}
+			} catch (final LinkageError ex) {
+				log.warning("[LogBlock] Chest access logging needs Project Poseidon (or CraftBukkit for b1.7.3), not available: " + ex + ". Items put into / taken out of containers are not logged.");
+			}
 		if (config.logButtonsAndLevers)
 			pm.registerEvent(Type.PLAYER_INTERACT, lbPlayerListener, Priority.Monitor, this);
 		if (config.logKills)
@@ -232,6 +227,10 @@ public class LogBlock extends JavaPlugin
 		if (timer != null)
 			timer.cancel();
 		getServer().getScheduler().cancelTasks(this);
+		if (chestAccessListener != null) {
+			chestAccessListener.logAll();
+			chestAccessListener = null;
+		}
 		if (consumer != null && consumer.getQueueSize() > 0) {
 			log.info("[LogBlock] Waiting for consumer ...");
 			int lastSize = -1, fails = 0;

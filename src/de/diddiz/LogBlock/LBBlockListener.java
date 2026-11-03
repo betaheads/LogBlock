@@ -1,5 +1,6 @@
 package de.diddiz.LogBlock;
 
+import static de.diddiz.util.BukkitUtils.isContainer;
 import java.io.File;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
@@ -49,7 +50,7 @@ class LBBlockListener extends BlockListener
 			}
 			if (wcfg.logSignTexts && (type == 63 || type == 68))
 				consumer.queueSignBreak(event.getPlayer().getName(), (Sign)event.getBlock().getState());
-			else if (wcfg.logChestAccess && (type == 23 || type == 54 || type == 61))
+			else if (wcfg.logChestAccess && isContainer(type))
 				consumer.queueContainerBreak(event.getPlayer().getName(), event.getBlock().getState());
 			else if (type == 79)
 				consumer.queueBlockReplace(event.getPlayer().getName(), event.getBlock().getState(), 11, (byte)0);

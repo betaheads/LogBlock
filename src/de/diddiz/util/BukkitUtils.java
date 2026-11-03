@@ -95,6 +95,13 @@ public class BukkitUtils
 		return compressed.toArray(new ItemStack[compressed.size()]);
 	}
 
+	/**
+	 * @return true for dispenser, chest, furnace and burning furnace
+	 */
+	public static boolean isContainer(int type) {
+		return type == 23 || type == 54 || type == 61 || type == 62;
+	}
+
 	public static boolean equalTypes(int type1, int type2) {
 		if (type1 == type2)
 			return true;

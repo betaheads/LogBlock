@@ -141,7 +141,7 @@ public class Consumer extends TimerTask
 
 	/**
 	 * @param type
-	 * Type id of the container. Must be 63 or 68.
+	 * Type id of the container. Must be 23, 54, 61 or 62.
 	 */
 	public void queueChestAccess(String playerName, Location loc, int type, short itemType, short itemAmount, byte itemData) {
 		queueBlock(playerName, loc, type, type, (byte)0, null, new ChestAccess(itemType, itemAmount, itemData));

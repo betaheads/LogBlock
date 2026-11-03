@@ -1,5 +1,6 @@
 package de.diddiz.LogBlock;
 
+import static de.diddiz.util.BukkitUtils.isContainer;
 import java.util.Map;
 import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
@@ -68,7 +69,7 @@ class LBEntityListener extends EntityListener
 				final int type = block.getTypeId();
 				if (wcfg.logSignTexts & (type == 63 || type == 68))
 					consumer.queueSignBreak(name, (Sign)block.getState());
-				else if (wcfg.logChestAccess && (type == 23 || type == 54 || type == 61))
+				else if (wcfg.logChestAccess && isContainer(type))
 					consumer.queueContainerBreak(name, block.getState());
 				else
 					consumer.queueBlockBreak(name, block.getState());
