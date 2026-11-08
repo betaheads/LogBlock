@@ -48,6 +48,7 @@ compile_test() {
 
 # prepare_server <ops...>: a fresh server in $SRV (ignored by git) with LogBlock and WorldEdit, offline mode on port 25599,
 # the given players in ops.txt and plugins/LogBlock/config.yml with the MySQL settings. Add more to config.yml after it.
+# config.yml has version 1.26, the old build: the server starts like one upgraded from it (docs/upgrading.md).
 prepare_server() {
 	echo "== Preparing server in $SRV"
 	rm -rf "$SRV"
@@ -83,6 +84,17 @@ mysql:
 consumer:
   delayBetweenRuns: 1
 EOF
+}
+
+# install_helper: builds the test fixture plugin tests/lib/helper (/lbt, see LBTest.java) into $SRV/plugins.
+# Call it after prepare_server.
+install_helper() {
+	echo "== Building test helper plugin"
+	rm -rf "$WORK/classes/helper"
+	mkdir -p "$WORK/classes/helper"
+	javac -nowarn -encoding UTF-8 -cp "$(native "$ROOT/testsrv/server.jar")" -d "$(native "$WORK/classes/helper")" "$(native "$LIB/helper/src/lbtest/LBTest.java")"
+	cp "$LIB/helper/plugin.yml" "$WORK/classes/helper/"
+	(cd "$WORK/classes/helper" && jar cf "$(native "$SRV/plugins/LBTest.jar")" .)
 }
 
 # run_test <main class>: runs it with the args serverDir jdbcUrl user password, exits with its exit code

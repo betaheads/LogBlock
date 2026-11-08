@@ -9,7 +9,7 @@
     <artifactId>logblock</artifactId>
     <!-- also the plugin version in plugin.yml; Updater compares it with "version" in config.yml
          to run config/DB migrations, so keep the old "1.xx" format -->
-    <version>1.26</version>
+    <version>1.27</version>
 
     <name>LogBlock</name>
     <url>http://www.diddiz.de/minecraft/</url>

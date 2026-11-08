@@ -181,10 +181,34 @@ public class PermissionGroupsTest
 		assertTrue(groups.getGroup("default").permissions.isEmpty());
 		for (final String permission : PermissionGroups.PERMISSIONS)
 			assertFalse(permission, groups.has("Anyone", false, permission));
-		assertTrue(groups.has("AnyOp", true, "clearlog"));
+		assertEquals(Arrays.asList("default"), names(groups.groupsOf("Anyone", false)));
+		// an op gets everything
+		for (final String permission : PermissionGroups.PERMISSIONS)
+			assertTrue(permission, groups.has("AnyOp", true, permission));
+		assertEquals(Arrays.asList("default", "admin"), names(groups.groupsOf("AnyOp", true)));
 		assertTrue(groups.getGroup("moderator").players.isEmpty());
 		assertTrue(groups.getGroup("moderator").gives("rollback"));
 		assertFalse(groups.getGroup("moderator").gives("ignoreRestrictions"));
+	}
+
+	/**
+	 * With permissions.usePermissionsPlugin: true and no permissions plugin, Bukkit uses the defaults from plugin.yml:
+	 * they have to give every permission to ops only, too. The keys contain dots, so the maps are read directly.
+	 */
+	@Test
+	public void pluginYmlGivesEveryPermissionToOpsOnly() {
+		final Configuration yml = new Configuration(new File("src/resources/plugin.yml"));
+		yml.load();
+		final Map<?, ?> permissions = (Map<?, ?>)yml.getProperty("permissions");
+		assertEquals(permissions.keySet().toString(), PermissionGroups.PERMISSIONS.size() + 1, permissions.size());
+		final Map<?, ?> children = (Map<?, ?>)((Map<?, ?>)permissions.get("logblock.*")).get("children");
+		assertEquals(PermissionGroups.PERMISSIONS.size(), children.size());
+		for (final String permission : PermissionGroups.PERMISSIONS) {
+			final Map<?, ?> node = (Map<?, ?>)permissions.get("logblock." + permission);
+			assertTrue(permission, node != null);
+			assertEquals(permission, "op", node.get("default"));
+			assertEquals(permission, Boolean.TRUE, children.get("logblock." + permission));
+		}
 	}
 
 	@Test

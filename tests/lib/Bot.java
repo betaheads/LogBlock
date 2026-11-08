@@ -102,7 +102,10 @@ public class Bot
 			throw new Exception(name + ": server didn't close window " + w);
 	}
 
-	/** Right click on the top face of a block with an empty hand */
+	/**
+	 * Right click on the top face of a block. The packet says empty hand, but the server uses the item the player
+	 * really holds: hotbar slot 0, the bot never changes it.
+	 */
 	synchronized void place(int x, int y, int z) throws IOException {
 		out.writeByte(0x0F);
 		out.writeInt(x);
@@ -177,6 +180,33 @@ public class Bot
 			if (line.contains(last))
 				return lines;
 		}
+	}
+
+	/** Fails if any chat line comes within millis */
+	void expectNothing(int millis) throws Exception {
+		final String line = chat.poll(millis, TimeUnit.MILLISECONDS);
+		if (line != null)
+			throw new Exception(name + ": expected no answer, got '" + line + "'");
+	}
+
+	/**
+	 * /lb permissions: exactly these permissions (without "logblock.", in the order of PermissionGroups.PERMISSIONS)
+	 * and "Your groups: groups"
+	 */
+	void expectPermissions(String groups, String... permissions) throws Exception {
+		say("/lb permissions");
+		final List<String> lines = collect("Your groups:");
+		final List<String> actual = new ArrayList<String>();
+		for (final String line : lines)
+			if (line.startsWith("logblock."))
+				actual.add(line.substring("logblock.".length()));
+		if (!actual.equals(Arrays.asList(permissions)))
+			throw new Exception(name + ": permissions " + actual + ", expected " + Arrays.asList(permissions));
+		if (permissions.length == 0 && !lines.contains("none"))
+			throw new Exception(name + ": no 'none' in " + lines);
+		final String last = lines.get(lines.size() - 1);
+		if (!last.equals("Your groups: " + groups))
+			throw new Exception(name + ": " + last + ", expected groups " + groups);
 	}
 
 	void str16(String s) throws IOException {

@@ -80,6 +80,21 @@ public class TestServer
 		throw new Exception("timeout waiting for server output: " + text);
 	}
 
+	/** Output lines so far that contain all the texts */
+	List<String> linesWith(String... texts) {
+		final List<String> result = new ArrayList<String>();
+		synchronized (output) {
+			for (final String line : output) {
+				boolean all = true;
+				for (final String text : texts)
+					all &= line.contains(text);
+				if (all)
+					result.add(line);
+			}
+		}
+		return result;
+	}
+
 	/** @return false if it had to be killed */
 	boolean stop() throws Exception {
 		cmd("stop");

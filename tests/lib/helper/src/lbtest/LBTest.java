@@ -11,14 +11,15 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
- * Test fixture for ChestTest, used from the server console. Changes blocks without firing events, so LogBlock
- * logs nothing for them.
+ * Test fixture for the end-to-end tests (ChestTest, FreshInstallTest), used from the server console. Changes blocks
+ * without firing events, so LogBlock logs nothing for them. Never install it on a real server.
  * <ul>
  * <li>/lbt setup player1 [player2 ...]: stone platform at y=99 around 0,0 with
  * chest S (2,100,0): 10 stone, 5 dirt; double chest D1 (-2,100,0): 7 cobblestone + D2 (-2,100,1): 9 planks;
  * chest B (0,100,3) with a stone block above, so it can't open: 4 sand; empty dispenser (0,100,-3).
  * Teleports the players to 0.5,100,0.5 and clears their inventories; player1 gets 20 glass in hotbar slot 0.</li>
  * <li>/lbt air x y z: sets the block to air.</li>
+ * <li>/lbt give player id: puts one item of type id into hotbar slot 0, the slot the bots hold.</li>
  * </ul>
  */
 public class LBTest extends JavaPlugin
@@ -58,6 +59,11 @@ public class LBTest extends JavaPlugin
 		if (args.length == 4 && args[0].equals("air")) {
 			world.getBlockAt(Integer.parseInt(args[1]), Integer.parseInt(args[2]), Integer.parseInt(args[3])).setTypeId(0);
 			System.out.println("LBT air done");
+			return true;
+		}
+		if (args.length == 3 && args[0].equals("give")) {
+			getServer().getPlayer(args[1]).getInventory().setItem(0, new ItemStack(Integer.parseInt(args[2]), 1));
+			System.out.println("LBT give done");
 			return true;
 		}
 		return false;

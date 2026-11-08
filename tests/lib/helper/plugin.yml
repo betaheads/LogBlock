@@ -1,0 +1,8 @@
+name: LBTest
+version: '1'
+main: lbtest.LBTest
+description: Test fixture for the end-to-end tests in tests/, never install on a real server.
+commands:
+  lbt:
+    description: 'Test fixture: /lbt setup <players...>, /lbt air <x> <y> <z>, /lbt give <player> <id>'
+    usage: /<command> setup <players...> | air <x> <y> <z> | give <player> <id>

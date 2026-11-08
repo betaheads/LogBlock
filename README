@@ -12,4 +12,5 @@ No MySQL connector jar is needed: the driver is bundled in Poseidon's server.jar
 Chest access logging (logChestAccess) works without Spout, see docs/chest-access.md.
 Rollback, redo and clearlog ask for confirmation with /lb yes, see docs/confirmations.md.
 Permissions are set in config.yml: groups, a default group for every player, players added by nickname (/lb group add), see docs/permissions.md. No permissions plugin needed.
-Tests: unit tests run with mvn package; end-to-end tests with bots on a real server: bash tests/chest-access/run.sh, bash tests/permissions/run.sh, see tests/README.md.
+Upgrading to 1.27 from the old build (1.26, commit 70001ed): see docs/upgrading.md.
+Tests: unit tests run with mvn package; end-to-end tests with bots on a real server: bash tests/chest-access/run.sh, bash tests/permissions/run.sh, bash tests/fresh-install/run.sh, see tests/README.md.

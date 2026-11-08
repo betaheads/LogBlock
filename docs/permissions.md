@@ -124,5 +124,6 @@ On the first start after the upgrade LogBlock adds the default groups to `config
 - `LBToolListener` checks the permission of the tool mode on every use.
 
 Tests:
-- `tests/unit/de/diddiz/LogBlock/PermissionGroupsTest.java` runs with `mvn package`. It covers the rules above, the warnings, add and remove, and a round trip through Bukkit's YAML for the defaults and nicknames like `yes`.
+- `tests/unit/de/diddiz/LogBlock/PermissionGroupsTest.java` runs with `mvn package`. It covers the rules above, the warnings, add and remove, and a round trip through Bukkit's YAML for the defaults and nicknames like `yes`. It also checks that the default groups give ops everything and others nothing, and that `plugin.yml` gives every permission to ops only.
 - `tests/permissions` checks everything above with bots on a real server. See [tests/README.md](../tests/README.md).
+- `tests/fresh-install` checks a new install on a real server: LogBlock adds the default groups to `config.yml`, an ordinary player is denied every command that needs a permission and the tool, an op has everything, and the commands for everyone work.

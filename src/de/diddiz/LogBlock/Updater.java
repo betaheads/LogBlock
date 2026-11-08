@@ -77,6 +77,8 @@ class Updater
 			config.removeProperty("tables");
 			config.setProperty("version", "1.23");
 		}
+		// Versions without changes to the tables or the config: only the version number, so this doesn't run on every start
+		config.setProperty("version", logblock.getDescription().getVersion());
 		config.save();
 		return true;
 	}

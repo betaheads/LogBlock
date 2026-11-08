@@ -1,8 +1,0 @@
-name: LBTest
-version: '1'
-main: lbtest.LBTest
-description: Test fixture for tests/chest-access, never install on a real server.
-commands:
-  lbt:
-    description: 'Test fixture: /lbt setup <players...>, /lbt air <x> <y> <z>'
-    usage: /<command> setup <players...> | air <x> <y> <z>
